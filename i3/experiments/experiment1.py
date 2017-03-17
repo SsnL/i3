@@ -61,31 +61,39 @@ class DiscreteData(SQLBase):
     self.world_indices = world_indices
     self.world_values = world_values
 
-def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
+def gen_data_run(num_states_per_run, seed):
   url = sql.get_database_url()
   session = sql.get_session(url)
-  for _ in xrange(num_gibbs_runs):
-    # random evidence
-    evidence = triangle_net.evidence(0, 99)
-    for k in evidence:
-      evidence[k] = np.random.choice([0, 1])
-    run = Run(num_states_per_run, list(evidence.keys()), list(evidence.values()), seed)
-    session.add(run)
-    session.commit()
-    rng = utils.RandomState(seed)
-    net = triangle_net.get(rng, 99)
-    training_sampler = mcmc.GibbsChain(net, rng, evidence)
-    training_sampler.initialize_state()
-    states = []
-    for i in xrange(num_states_per_run):
-      training_sampler.transition()
-      state = training_sampler.state
-      state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
-      states.append(state)
-    session.add_all(states)
-    session.commit()
-    seed += 1
+  # random evidence
+  evidence = triangle_net.evidence(0, 99)
+  for k in evidence:
+    evidence[k] = np.random.choice([0, 1])
+  run = Run(num_states_per_run, list(evidence.keys()), list(evidence.values()), seed)
+  session.add(run)
+  session.commit()
+  rng = utils.RandomState(seed)
+  net = triangle_net.get(rng, 99)
+  training_sampler = mcmc.GibbsChain(net, rng, evidence)
+  training_sampler.initialize_state()
+  states = []
+  for i in xrange(num_states_per_run):
+    training_sampler.transition()
+    state = training_sampler.state
+    state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
+    states.append(state)
+  session.add_all(states)
+  session.commit()
   session.close()
+
+def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
+  print "Gen data..."
+  p = mp.Pool()
+  for _ in range(num_gibbs_runs):
+    p.apply_async(gen_data_run, args = (num_states_per_run, seed))
+    seed += 1
+  p.close()
+  p.join()
+  p.terminate()
 
 class Job(SQLBase):
   __tablename__ = "experiment1"
