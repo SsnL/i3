@@ -91,7 +91,7 @@ def compute_inverse_net(net, start_nodes, end_node, rng, max_inverse_size):
   for node in net.nodes_by_index:
     if node not in start_nodes:
       scored_indices.append((node.index, scorer(node, end_node)))
-  sorted_pairs = sorted(scored_indices, key=lambda (i, s): -s)
+  sorted_pairs = sorted(scored_indices, key=lambda i_and_s: -i_and_s[1])
   sorted_indices = [index for (index, _) in sorted_pairs]
 
   def node_to_inverse(node):

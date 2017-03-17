@@ -1,4 +1,7 @@
-import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import collections
 import operator
 import token
@@ -121,16 +124,16 @@ marginal_parser = get_marginal_parser()
 
 def reorder_cpt(old_order, old_domain_sizes, old_probs, new_order):
   """Return reordered CPT based on old and new node indices.
-  
+
   Args:
     old_order: list of indices
     old_domain_sizes: mapping from indices to integers
-    old_probs: list of probabilities  
+    old_probs: list of probabilities
     new_order: list of indices
 
   Example:
     old_order = [a, b, c]
-    old_domain_sizes = [2, 2, 2]  
+    old_domain_sizes = [2, 2, 2]
     old_probs = [.1, .2, .3, .4, .5, .6, .7, .8]
     new_order = [c, a, b]
 
@@ -142,7 +145,7 @@ def reorder_cpt(old_order, old_domain_sizes, old_probs, new_order):
     a=1, b=0, c=0 .5
     a=1, b=0, c=1 .6
     a=1, b=1, c=0 .7
-    a=1, b=1, c=1 .8  
+    a=1, b=1, c=1 .8
 
   New (unnormalized) CPT:
     c=0, a=0, b=0: .1

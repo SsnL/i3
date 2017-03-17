@@ -1,14 +1,11 @@
-import cloud
+# import cloud
 import os
 
 from i3 import uai_import
 
 
 def data_path():
-  if cloud.running_on_cloud():
-    return "/bucket/"
-  else:
-    return os.path.join(os.path.dirname(__file__), "../../data/")
+  return os.path.join(os.path.dirname(__file__), "../../data/")
 
 
 def get(rng, determinism=95):

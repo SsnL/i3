@@ -5,6 +5,14 @@ import datetime
 import random
 import sqlalchemy as sa
 from sqlalchemy.ext import declarative as sa_declarative
+from sqlalchemy.dialects import postgresql as sa_postgresql
+from itertools import product
+import sys
+
+if sys.version_info < (3, 0):
+  from itertools import izip as zip
+
+import numpy as np
 
 from i3 import invert
 from i3 import learn
@@ -12,11 +20,72 @@ from i3 import marg
 from i3 import mcmc
 from i3 import train
 from i3 import utils
+from i3 import random_world
 from i3.networks import triangle_net
-
+from i3.experiments import sql
 
 SQLBase = sa_declarative.declarative_base()
 
+# traning data
+# assumes binary valued world, determinism = 0.99
+# Gibbs runs
+class Run(SQLBase):
+  __tablename__ = "experiment1_gibbs_runs"
+  id = sa.Column(sa.Integer, primary_key=True)
+  start_time = sa.Column(sa.DateTime)
+  num_states = sa.Column(sa.Integer)
+  evidence_indices = sa.Column(sa_postgresql.ARRAY(sa.Integer))
+  evidence_values = sa.Column(sa_postgresql.ARRAY(sa.Integer))
+  seed = sa.Column(sa.Integer)
+
+  def __init__(self, num_states, evidence_indices, evidence_values, seed = 0):
+    self.start_time = datetime.datetime.now()
+    self.num_states = num_states
+    self.evidence_indices = evidence_indices
+    self.evidence_values = evidence_values
+    self.seed = seed
+
+class DiscreteData(SQLBase):
+  __tablename__ = "experiment1_gibbs_data"
+
+  gibbs_id = sa.Column(sa.Integer, primary_key=True)
+  state_id = sa.Column(sa.Integer, primary_key=True, nullable = False)
+  time = sa.Column(sa.DateTime)
+  world_indices = sa.Column(sa_postgresql.ARRAY(sa.Integer))
+  world_values = sa.Column(sa_postgresql.ARRAY(sa.Integer))
+
+  def __init__(self, gibbs_id, state_id, world_indices, world_values):
+    self.gibbs_id = gibbs_id
+    self.state_id = state_id
+    self.time = datetime.datetime.now()
+    self.world_indices = world_indices
+    self.world_values = world_values
+
+def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
+  url = sql.get_database_url()
+  session = sql.get_session(url)
+  for _ in xrange(num_gibbs_runs):
+    # random evidence
+    evidence = triangle_net.evidence(0, 99)
+    for k in evidence:
+      evidence[k] = np.random.choice([0, 1])
+    run = Run(num_states_per_run, list(evidence.keys()), list(evidence.values()), seed)
+    session.add(run)
+    session.commit()
+    rng = utils.RandomState(seed)
+    net = triangle_net.get(rng, 99)
+    training_sampler = mcmc.GibbsChain(net, rng, evidence)
+    training_sampler.initialize_state()
+    states = []
+    for i in xrange(num_states_per_run):
+      training_sampler.transition()
+      state = training_sampler.state
+      state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
+      states.append(state)
+    session.add_all(states)
+    session.commit()
+    seed += 1
+  session.close()
 
 class Job(SQLBase):
   __tablename__ = "experiment1"
@@ -28,41 +97,48 @@ class Job(SQLBase):
   inversion_seconds = sa.Column(sa.Float)
   learner = sa.Column(sa.String)
   max_inverse_size = sa.Column(sa.Integer)
-  num_training_samples = sa.Column(sa.Integer)
+  num_training_samples_gibbs = sa.Column(sa.Integer)
+  num_training_samples_prior = sa.Column(sa.Integer)
   precompute_gibbs = sa.Column(sa.Boolean)
   seed = sa.Column(sa.Integer)
   start_time = sa.Column(sa.DateTime)
-  test_error = sa.Column(sa.Float)
+  num_test_iterations = sa.Column(sa.Integer)
+  # test_error = sa.Column(sa.Float)
+  test_errors = sa.Column(sa_postgresql.ARRAY(sa.Float))
   test_proposals = sa.Column(sa.Integer)
   test_proposals_accepted = sa.Column(sa.Integer)
-  test_seconds = sa.Column(sa.Float)
-  empirical_test_seconds = sa.Column(sa.Float)  
+  # test_seconds = sa.Column(sa.Float)
+  empirical_test_seconds = sa.Column(sa.Float)
   training_error = sa.Column(sa.Float)
   training_seconds = sa.Column(sa.Float)
-  training_source = sa.Column(sa.String)
-  integrated_error = sa.Column(sa.Float)
+  # training_source = sa.Column(sa.String)
+  # integrated_error = sa.Column(sa.Float)
 
   def __init__(self, name):
     self.name = name
     self.status = "init"
     self.determinism = 95
+    self.inversion_seconds = None
     self.learner = "counts"
     self.max_inverse_size = 1
-    self.num_training_samples = 10000
+    # self.num_training_samples = 10000
+    self.num_training_samples_gibbs = 5000
+    self.num_training_samples_prior = 5000
     self.precompute_gibbs = False
     self.seed = 0
-    self.test_seconds = 10
-    self.training_source = "gibbs"
-    self.inversion_seconds = None
+    # self.training_source = "gibbs"
     self.start_time = None
-    self.test_error = None
+    self.num_test_iterations = 100
+    # self.test_error = None
+    self.test_errors = None
     self.test_proposals = None
     self.test_proposals_accepted = None
+    # self.test_seconds = 10
+    self.empirical_test_seconds = None
     self.training_error = None
     self.training_seconds = None
-    self.empirical_test_seconds = None
-    self.integrated_error = None
-    
+    # self.integrated_error = None
+
   def __repr__(self):
     return "<Job({}, {}, {})>".format(self.name, self.id, self.status)
 
@@ -78,8 +154,8 @@ def create_jobs(num_jobs):
     seed += 1
     job = Job("exp1")
     job.seed = seed
-    job.training_source = random.choice(["prior", "gibbs", "prior+gibbs"])    
-    job.determinism = random.choice([95, 99])    
+    job.training_source = random.choice(["prior", "gibbs", "prior+gibbs"])
+    job.determinism = random.choice([95, 99])
     job.max_inverse_size = random.choice(
       range(1, 20) + [20, 30, 40, 50, 60, 70, 80, 90, 100])
     job.num_training_samples = random.choice(
@@ -89,10 +165,35 @@ def create_jobs(num_jobs):
     jobs.append(job)
   return jobs
 
+def create_reference_jobs(num_jobs_per_case):
+  jobs = []
+  seed = 1000
+  determinisms = [99]
+  prior_ratios = [0., 0.33, 0.67, 1.]
+  max_inverse_sizes = [20]
+  num_training_sampless = [100000]
+  precompute_gibbss = [True]
+  learners = ["lr"]
+  num_test_iterations = 1000
+  params = [determinisms, prior_ratios, max_inverse_sizes, num_training_sampless, precompute_gibbss, learners]
+  for determinism, prior_ratio, max_inverse_size, num_training_samples, precompute_gibbs, learner in product(*params):
+    for _ in xrange(num_jobs_per_case):
+      seed += 1
+      job = Job("exp1")
+      job.seed = seed
+      job.num_training_samples_prior = int(prior_ratio * num_training_samples)
+      job.num_training_samples_gibbs = num_training_samples - job.num_training_samples_prior
+      job.determinism = determinism
+      job.max_inverse_size = max_inverse_size
+      job.precompute_gibbs = precompute_gibbs
+      job.learner = learner
+      job.num_test_iterations = num_test_iterations
+      jobs.append(job)
+  return jobs
 
-def run(job, session):
+def run(job, session, log):
 
-  print "Starting job..."
+  log("Starting job...")
   job.start_time = datetime.datetime.now()
   rng = utils.RandomState(job.seed)
   net = triangle_net.get(rng, job.determinism)
@@ -103,7 +204,7 @@ def run(job, session):
   job.status = "started"
   session.commit()
 
-  print "Computing inverse map..."
+  log("Computing inverse map...")
   t0 = datetime.datetime.now()
   inverse_map = invert.compute_inverse_map(
     net, evidence_nodes, rng, job.max_inverse_size)
@@ -112,24 +213,36 @@ def run(job, session):
   job.status = "inverted"
   session.commit()
 
-  print "Training inverses..."
+  log("Training inverses...")
   if job.learner == "counts":
     learner_class = learn.CountLearner
   elif job.learner == "lr":
     learner_class = learn.LogisticRegressionLearner
   else:
     raise ValueError("Unknown learner type!")
-  trainer = train.Trainer(net, inverse_map, job.precompute_gibbs, learner_class)
+  trainer = train.Trainer(net, inverse_map, job.precompute_gibbs, learner_class = learner_class)
   counter = marg.MarginalCounter(net)
-  if job.training_source in ("gibbs", "prior+gibbs"):
-    training_sampler = mcmc.GibbsChain(net, rng, evidence)
-    training_sampler.initialize_state()
-    for _ in xrange(job.num_training_samples):
-      training_sampler.transition()
-      trainer.observe(training_sampler.state)
-      counter.observe(training_sampler.state)
-  if job.training_source in ("prior", "prior+gibbs"):
-    for _ in xrange(job.num_training_samples):
+  if job.num_training_samples_gibbs > 0:
+    num_runs = 10
+    num_per_run = int(job.num_training_samples_gibbs / 10)
+    nums_per_run = np.ones(num_runs) * num_per_run
+    nums_per_run[-1] += job.num_training_samples_gibbs - nums_per_run.sum()
+    for run, num_per_run in zip(session.query(Run).limit(num_runs), nums_per_run):
+      for state in session.query(DiscreteData).\
+                    filter(DiscreteData.gibbs_id == run.id).\
+                    order_by(DiscreteData.state_id).\
+                    limit(num_per_run):
+        world = random_world.RandomWorld(state.world_indices, state.world_values)
+        trainer.observe(world)
+        counter.observe(world)
+    # training_sampler = mcmc.GibbsChain(net, rng, evidence)
+    # training_sampler.initialize_state()
+    # for _ in xrange(job.num_training_samples_gibbs):
+    #   training_sampler.transition()
+    #   trainer.observe(training_sampler.state)
+    #   counter.observe(training_sampler.state)
+  if job.num_training_samples_prior > 0:
+    for _ in xrange(job.num_training_samples_prior):
       world = net.sample()
       trainer.observe(world)
       counter.observe(world)
@@ -140,7 +253,7 @@ def run(job, session):
   job.status = "trained"
   session.commit()
 
-  print "Testing inverse sampler..."
+  log("Testing inverse sampler...")
   test_sampler = mcmc.InverseChain(
     net, inverse_map, rng, evidence, job.max_inverse_size)
   test_sampler.initialize_state()
@@ -148,22 +261,26 @@ def run(job, session):
   num_proposals_accepted = 0
   test_start_time = datetime.datetime.now()
   i = 0
-  error_integrator = utils.TemporalIntegrator()
-  while ((datetime.datetime.now() - test_start_time).total_seconds()
-         < job.test_seconds):
+  test_errors = []
+  # error_integrator = utils.TemporalIntegrator()
+  # while ((datetime.datetime.now() - test_start_time).total_seconds()
+  #        < job.test_seconds):
+  while i < job.num_test_iterations:
     accept = test_sampler.transition()
     counter.observe(test_sampler.state)
     num_proposals_accepted += accept
     i += 1
-    if i % 100 == 0:
-      error = (marginals - counter.marginals()).mean()
-      error_integrator.observe(error)
-  final_error = (marginals - counter.marginals()).mean()
+    test_errors.append((marginals - counter.marginals()).mean())
+    # if i % 100 == 0:
+    #   error = (marginals - counter.marginals()).mean()
+    #   error_integrator.observe(error)
+  # final_error = (marginals - counter.marginals()).mean()
   final_time = datetime.datetime.now()
   empirical_test_seconds = (final_time - test_start_time).total_seconds()
-  error_integrator.observe(final_error)
-  job.test_error = final_error
-  job.integrated_error = error_integrator.integral / empirical_test_seconds
+  # error_integrator.observe(final_error)
+  job.test_errors = test_errors
+  # job.test_error = final_error
+  # job.integrated_error = error_integrator.integral / empirical_test_seconds
   job.test_proposals = i * num_latent_nodes
   job.test_proposals_accepted = num_proposals_accepted
   job.empirical_test_seconds = empirical_test_seconds
