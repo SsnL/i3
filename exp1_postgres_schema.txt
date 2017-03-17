@@ -15,3 +15,6 @@ alter table experiment1_gibbs_runs ADD COLUMN id BIGSERIAL PRIMARY KEY;
 
 create table experiment1_gibbs_data (gibbs_id integer references experiment1_gibbs_runs(id), state_id integer not null, time time, world_indices integer array, world_values integer array);
 alter table experiment1_gibbs_data add primary key (gibbs_id, state_id);
+
+
+grant all privileges on database invert to inverse;

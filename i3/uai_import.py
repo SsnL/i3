@@ -1,5 +1,5 @@
 try:
-    from StringIO import StringIO
+    import StringIO
 except ImportError:
     from io import StringIO
 import collections
