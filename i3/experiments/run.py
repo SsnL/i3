@@ -1,4 +1,7 @@
 from __future__ import division
+import os
+import sys
+sys.path.append(os.getcwd())
 
 import cloud
 import random
