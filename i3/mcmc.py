@@ -105,8 +105,9 @@ class GibbsChain(BayesNetChain):
     markov_blanket_vals = tuple(
       [self.state.data[var.index] for var in node.markov_blanket])
     # gibbs_dist = self.gibbs_distributions[node][markov_blanket_vals]
-    gibbs_dist = gibbs.gibbs_distribution(node, self.state, seld.rng)
-    self.state.data[node.index] = gibbs_dist.sample(None)
+    gibbs_probs = gibbs.gibbs_probabilities(node, self.state)
+    # self.state.data[node.index] = gibbs_dist.sample(None)
+    self.state.data[node.index] = self.rng.categorical(node.support, utils.normalize(gibbs_probs))
 
 
 class InverseChain(BayesNetChain):

@@ -75,8 +75,10 @@ def gen_data_run(num_states_per_run, url, seed):
   rng = utils.RandomState(seed)
   net = triangle_net.get(rng, 99)
   training_sampler = mcmc.GibbsChain(net, rng, evidence)
+  print "inited"
   training_sampler.initialize_state()
   for i in xrange(num_states_per_run):
+    print i
     training_sampler.transition()
     state = training_sampler.state
     state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
@@ -89,7 +91,7 @@ def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
   print "Gen data..."
   url = sql.get_database_url()
   p = mp.Pool()
-  for _ in range(num_gibbs_runs):
+  for _ in xrange(num_gibbs_runs):
     p.apply_async(gen_data_run, args = (num_states_per_run, url, seed))
     seed += 1
   p.close()
