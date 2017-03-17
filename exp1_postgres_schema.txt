@@ -9,7 +9,7 @@ ALTER TABLE experiment1 ADD COLUMN id BIGSERIAL PRIMARY KEY;
 CREATE USER inverse;
 create database invert;
 
-create table experiment1 (name varchar, status varchar, determinism integer, inversion_seconds float, learner varchar, max_inverse_size integer, num_training_samples_gibbs integer, num_training_samples_prior integer, precompute_gibbs boolean, seed integer, start_time time, num_test_iterations integer, test_errors float array, test_proposals integer, test_proposals_accepted integer, empirical_test_seconds float, training_error float, training_seconds float);
+create table experiment1 (name varchar, net_name varchar, status varchar, determinism integer, inversion_seconds float, learner varchar, max_inverse_size integer, num_training_samples_gibbs integer, num_training_samples_prior integer, precompute_gibbs boolean, seed integer, start_time time, num_test_iterations integer, test_errors float array, test_proposals integer, test_proposals_accepted integer, empirical_test_seconds float, training_error float, training_seconds float);
 
 ALTER TABLE experiment1 ADD COLUMN id BIGSERIAL PRIMARY KEY;
 

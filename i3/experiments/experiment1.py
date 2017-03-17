@@ -102,6 +102,7 @@ class Job(SQLBase):
 
   id = sa.Column(sa.Integer, primary_key=True)
   name = sa.Column(sa.String)
+  net_name = sa.Column(sa.String)
   status = sa.Column(sa.String)
   determinism = sa.Column(sa.Integer)
   inversion_seconds = sa.Column(sa.Float)
@@ -178,18 +179,20 @@ def create_jobs(num_jobs):
 def create_reference_jobs(num_jobs_per_case):
   jobs = []
   seed = 1000
+  net_names = ["75-25-{}".format(i) for i in xrange(1, 11)]
   determinisms = [99]
-  prior_ratios = [0., 1.]
+  prior_ratios = [1.]
   max_inverse_sizes = [20]
   num_training_sampless = [10000, 100000]
   precompute_gibbss = [True]
   learners = ["counts", "lr"]
   num_test_iterations = 1000
-  params = [determinisms, prior_ratios, max_inverse_sizes, num_training_sampless, precompute_gibbss, learners]
-  for determinism, prior_ratio, max_inverse_size, num_training_samples, precompute_gibbs, learner in product(*params):
+  params = [net_names, determinisms, prior_ratios, max_inverse_sizes, num_training_sampless, precompute_gibbss, learners]
+  for net_name, determinism, prior_ratio, max_inverse_size, num_training_samples, precompute_gibbs, learner in product(*params):
     for _ in xrange(num_jobs_per_case):
       seed += 1
       job = Job("exp1")
+      job.net_name = net_name
       job.seed = seed
       job.num_training_samples_prior = int(prior_ratio * num_training_samples)
       job.num_training_samples_gibbs = num_training_samples - job.num_training_samples_prior
@@ -207,11 +210,11 @@ def run(job, session, log):
   job.start_time = datetime.datetime.now()
   rng = utils.RandomState(job.seed)
   np.random.seed(job.seed)
-  net = triangle_net.get(rng, job.determinism)
-  evidence = triangle_net.evidence(0, job.determinism)
+  net = triangle_net.get(job.net_name, rng, job.determinism)
+  evidence = triangle_net.evidence(job.net_name, 0, job.determinism)
   evidence_nodes = [net.nodes_by_index[index] for index in evidence.keys()]
   num_latent_nodes = len(net.nodes()) - len(evidence_nodes)
-  marginals = triangle_net.marginals(0, job.determinism)
+  marginals = triangle_net.marginals(job.net_name, 0, job.determinism)
   job.status = "started"
   session.commit()
 
