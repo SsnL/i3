@@ -62,8 +62,7 @@ class DiscreteData(SQLBase):
     self.world_indices = world_indices
     self.world_values = world_values
 
-def gen_data_run(num_states_per_run, seed):
-  url = sql.get_database_url()
+def gen_data_run(num_states_per_run, url, seed):
   session = sql.get_session(url)
   # random evidence
   evidence = triangle_net.evidence(0, 99)
@@ -88,9 +87,10 @@ def gen_data_run(num_states_per_run, seed):
 
 def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
   print "Gen data..."
+  url = sql.get_database_url()
   p = mp.Pool()
   for _ in range(num_gibbs_runs):
-    p.apply_async(gen_data_run, args = (num_states_per_run, seed))
+    p.apply_async(gen_data_run, args = (num_states_per_run, url, seed))
     seed += 1
   p.close()
   p.join()
