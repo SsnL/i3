@@ -6,6 +6,7 @@ import random
 import sqlalchemy as sa
 from sqlalchemy.ext import declarative as sa_declarative
 from sqlalchemy.dialects import postgresql as sa_postgresql
+from  sqlalchemy.sql.expression import func
 from itertools import product
 import sys
 import multiprocessing as mp
@@ -233,18 +234,12 @@ def run(job, session, log):
   trainer = train.Trainer(net, inverse_map, job.precompute_gibbs, learner_class = learner_class)
   counter = marg.MarginalCounter(net)
   if job.num_training_samples_gibbs > 0:
-    num_runs = 10
-    num_per_run = int(job.num_training_samples_gibbs / 10)
-    nums_per_run = np.ones(num_runs) * num_per_run
-    nums_per_run[-1] += job.num_training_samples_gibbs - nums_per_run.sum()
-    for run, num_per_run in zip(session.query(Run).limit(num_runs), nums_per_run):
-      for state in session.query(DiscreteData).\
-                    filter(DiscreteData.gibbs_id == run.id).\
-                    order_by(DiscreteData.state_id).\
-                    limit(num_per_run):
-        world = random_world.RandomWorld(state.world_indices, state.world_values)
-        trainer.observe(world)
-        counter.observe(world)
+    for state in session.query(DiscreteData).\
+                  order_by(func.random()).\
+                  limit(job.num_training_samples_gibbs):
+      world = random_world.RandomWorld(state.world_indices, state.world_values)
+      trainer.observe(world)
+      counter.observe(world)
     # training_sampler = mcmc.GibbsChain(net, rng, evidence)
     # training_sampler.initialize_state()
     # for _ in xrange(job.num_training_samples_gibbs):
