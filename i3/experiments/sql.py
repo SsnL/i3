@@ -20,7 +20,7 @@ def get_database_url(database_file=None):
   if not database_file:
     home = os.path.expanduser("~")
     database_file = os.path.join(home, ".pgpass")
-  host, port, db_name, user, password = open(database_file).read().split(":")
+  host, port, db_name, user, password = open(database_file).read().strip().split(":")
   return "postgresql://{user}:{password}@{host}:{port}/{db_name}".format(
     host=host,
     port=port,
@@ -28,11 +28,11 @@ def get_database_url(database_file=None):
     user=user,
     password=password
   )
-  
+
 
 def reset_database(sql_base_class, db_url):
   """Drop and recreate all tables."""
   engine = sa.create_engine(db_url, echo=False)
   sql_base_class.metadata.drop_all(bind=engine)
   sql_base_class.metadata.create_all(bind=engine)
-  
+
