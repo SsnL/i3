@@ -67,6 +67,7 @@ def gen_data_run(num_states_per_run, seed):
   session = sql.get_session(url)
   # random evidence
   evidence = triangle_net.evidence(0, 99)
+  np.random.seed(seed)
   for k in evidence:
     evidence[k] = np.random.choice([0, 1])
   run = Run(num_states_per_run, list(evidence.keys()), list(evidence.values()), seed)
@@ -205,6 +206,7 @@ def run(job, session, log):
   log("Starting job...")
   job.start_time = datetime.datetime.now()
   rng = utils.RandomState(job.seed)
+  np.random.seed(job.seed)
   net = triangle_net.get(rng, job.determinism)
   evidence = triangle_net.evidence(0, job.determinism)
   evidence_nodes = [net.nodes_by_index[index] for index in evidence.keys()]
