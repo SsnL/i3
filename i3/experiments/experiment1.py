@@ -8,6 +8,7 @@ from sqlalchemy.ext import declarative as sa_declarative
 from sqlalchemy.dialects import postgresql as sa_postgresql
 from itertools import product
 import sys
+import multiprocessing as mp
 
 if sys.version_info < (3, 0):
   from itertools import izip as zip
