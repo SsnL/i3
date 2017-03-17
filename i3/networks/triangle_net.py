@@ -8,31 +8,31 @@ def data_path():
   return os.path.join(os.path.dirname(__file__), "../../data/")
 
 
-def get(rng, determinism=95):
+def get(name, rng, determinism=95):
   # filename = os.path.join(
   #   data_path(), "networks/triangle-n120-s{}.uai".format(determinism))
   filename = os.path.join(
-    data_path(), "networks/bn2o-30-20-200-1b-s{}.uai".format(determinism))
+    data_path(), "networks/{}-s{}.uai".format(name, determinism))
   net = uai_import.load_network(filename, rng)
   return net
 
 
-def evidence(index, determinism=95):
+def evidence(name, index, determinism=95):
   assert index == 0
   # filename = os.path.join(
   #   data_path(), "evidence/triangle-n120-s{}-1.evid".format(determinism))
   filename = os.path.join(
-    data_path(), "evidence/bn2o-30-20-200-1b-s{}-1.evid".format(determinism))
+    data_path(), "evidence/{}-s{}-1.evid".format(name, determinism))
   evidence = uai_import.load_evidence(filename)
   return evidence
 
 
-def marginals(index, determinism=95):
+def marginals(name, index, determinism=95):
   assert index == 0
   # filename = os.path.join(
   #   data_path(), "marginals/triangle-n120-s{}-1.mar".format(determinism))
   filename = os.path.join(
-    data_path(), "marginals/bn2o-30-20-200-1b-s{}-1.mar".format(determinism))
+    data_path(), "marginals/{}-s{}-1.mar".format(name, determinism))
   marginals = uai_import.load_marginals(filename)
   return marginals
 
