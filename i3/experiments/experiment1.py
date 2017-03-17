@@ -75,10 +75,8 @@ def gen_data_run(num_states_per_run, url, seed):
   rng = utils.RandomState(seed)
   net = triangle_net.get(rng, 99)
   training_sampler = mcmc.GibbsChain(net, rng, evidence)
-  print "inited"
   training_sampler.initialize_state()
   for i in xrange(num_states_per_run):
-    print i
     training_sampler.transition()
     state = training_sampler.state
     state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
