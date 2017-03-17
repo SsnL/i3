@@ -77,13 +77,12 @@ def gen_data_run(num_states_per_run, seed):
   net = triangle_net.get(rng, 99)
   training_sampler = mcmc.GibbsChain(net, rng, evidence)
   training_sampler.initialize_state()
-  states = []
   for i in xrange(num_states_per_run):
     training_sampler.transition()
     state = training_sampler.state
     state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
-    states.append(state)
-  session.add_all(states)
+    session.add(state)
+    session.commit()
   session.commit()
   session.close()
 
