@@ -65,7 +65,7 @@ class DiscreteData(SQLBase):
     self.world_indices = world_indices
     self.world_values = world_values
 
-def gen_data_run(net_name, num_states url, seed):
+def gen_data_run(net_name, num_states, url, seed):
   session = sql.get_session(url)
   # random evidence
   evidence = triangle_net.evidence(net_name, 0, 99)
