@@ -32,7 +32,7 @@ def main(name):
   f = open(
     os.path.join(
       os.path.dirname(__file__),
-      "../data/marginals/uai/{}.{}.mar".format(name, exact)), "w")
+      "i3/data/marginals/uai/{}.{}.mar".format(name, exact)), "w")
   f.write(marginals_string)
   f.close()
 
