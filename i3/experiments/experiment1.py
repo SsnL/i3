@@ -169,11 +169,11 @@ def create_reference_jobs(num_jobs_per_case):
   jobs = []
   seed = 1000
   determinisms = [99]
-  prior_ratios = [0., 0.33, 0.67, 1.]
+  prior_ratios = [0., 1.]
   max_inverse_sizes = [20]
-  num_training_sampless = [100000]
+  num_training_sampless = [10000, 100000]
   precompute_gibbss = [True]
-  learners = ["lr"]
+  learners = ["counts", "lr"]
   num_test_iterations = 1000
   params = [determinisms, prior_ratios, max_inverse_sizes, num_training_sampless, precompute_gibbss, learners]
   for determinism, prior_ratio, max_inverse_size, num_training_samples, precompute_gibbs, learner in product(*params):
