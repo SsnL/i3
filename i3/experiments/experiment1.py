@@ -34,13 +34,15 @@ SQLBase = sa_declarative.declarative_base()
 class Run(SQLBase):
   __tablename__ = "experiment1_gibbs_runs"
   id = sa.Column(sa.Integer, primary_key=True)
+  net_name = sa.Column(sa.String)
   start_time = sa.Column(sa.DateTime)
   num_states = sa.Column(sa.Integer)
   evidence_indices = sa.Column(sa_postgresql.ARRAY(sa.Integer))
   evidence_values = sa.Column(sa_postgresql.ARRAY(sa.Integer))
   seed = sa.Column(sa.Integer)
 
-  def __init__(self, num_states, evidence_indices, evidence_values, seed = 0):
+  def __init__(self, net_name, num_states, evidence_indices, evidence_values, seed = 0):
+    self.net_name = net_name
     self.start_time = datetime.datetime.now()
     self.num_states = num_states
     self.evidence_indices = evidence_indices
@@ -63,21 +65,21 @@ class DiscreteData(SQLBase):
     self.world_indices = world_indices
     self.world_values = world_values
 
-def gen_data_run(num_states_per_run, url, seed):
+def gen_data_run(net_name, num_states url, seed):
   session = sql.get_session(url)
   # random evidence
-  evidence = triangle_net.evidence(0, 99)
+  evidence = triangle_net.evidence(net_name, 0, 99)
   np.random.seed(seed)
   for k in evidence:
     evidence[k] = np.random.choice([0, 1])
-  run = Run(num_states_per_run, list(evidence.keys()), list(evidence.values()), seed)
+  run = Run(net_name, num_states, list(evidence.keys()), list(evidence.values()), seed)
   session.add(run)
   session.commit()
   rng = utils.RandomState(seed)
-  net = triangle_net.get(rng, 99)
+  net = triangle_net.get(net_name, rng, 99)
   training_sampler = mcmc.GibbsChain(net, rng, evidence)
   training_sampler.initialize_state()
-  for i in xrange(num_states_per_run):
+  for i in xrange(num_states):
     training_sampler.transition()
     state = training_sampler.state
     state = DiscreteData(run.id, i + 1, list(state.keys()), list(state.values()))
@@ -86,12 +88,12 @@ def gen_data_run(num_states_per_run, url, seed):
   session.commit()
   session.close()
 
-def gen_data(num_gibbs_runs, num_states_per_run, seed = 1000):
+def gen_data(net_name, num_gibbs_runs, num_states_per_run, seed = 1000):
   print "Gen data..."
   url = sql.get_database_url()
   p = mp.Pool()
   for _ in xrange(num_gibbs_runs):
-    p.apply_async(gen_data_run, args = (num_states_per_run, url, seed))
+    p.apply_async(gen_data_run, args = (net_name, num_states_per_run, url, seed))
     seed += 1
   p.close()
   p.join()
