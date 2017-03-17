@@ -7,6 +7,7 @@ import time
 import multiprocessing as mp
 import sys
 
+import i3
 from i3.experiments import sql
 from i3.experiments import experiment1
 
