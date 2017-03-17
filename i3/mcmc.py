@@ -90,9 +90,9 @@ class GibbsChain(BayesNetChain):
       evidence: a mapping from nodes to values
     """
     super(GibbsChain, self).__init__(net, rng, evidence)
-    self.gibbs_distributions = {}
-    for node in self.net.nodes():
-      self.gibbs_distributions[node] = gibbs.all_gibbs_distributions(node, rng)
+    # self.gibbs_distributions = {}
+    # for node in self.net.nodes():
+    #   self.gibbs_distributions[node] = gibbs.all_gibbs_distributions(node, rng)
 
   def transition(self):
     """Transition to next chain state by randomly updating each node in net."""
@@ -104,7 +104,8 @@ class GibbsChain(BayesNetChain):
     """Update a single node using its conditional distribution."""
     markov_blanket_vals = tuple(
       [self.state.data[var.index] for var in node.markov_blanket])
-    gibbs_dist = self.gibbs_distributions[node][markov_blanket_vals]
+    # gibbs_dist = self.gibbs_distributions[node][markov_blanket_vals]
+    gibbs_dist = gibbs.gibbs_distribution(node, self.state, seld.rng)
     self.state.data[node.index] = gibbs_dist.sample(None)
 
 
