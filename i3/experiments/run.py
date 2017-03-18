@@ -56,7 +56,7 @@ def run_job(job_id, url):
 
   return job.status
 
-def run_experiment(experiment, reset_database=False, pool_size = 3):
+def run_experiment(experiment, reset_database=False):
   """Create and run all jobs for experiment."""
   url = sql.get_database_url()
   if reset_database:
@@ -66,13 +66,14 @@ def run_experiment(experiment, reset_database=False, pool_size = 3):
     sql.reset_database(experiment.Job, url)
   print "Creating jobs..."
   # jobs = experiment.create_jobs(num_jobs=2)
-  jobs = experiment.create_reference_jobs(10)
+  # jobs = experiment.create_reference_jobs(10)
   session = sql.get_session(url)
-  session.add_all(jobs)
-  session.commit()
+  jobs = session.query(experiment.Job).filter(experiment.Job.status != 'done')
+  # session.add_all(jobs)
+  # session.commit()
   job_ids = [job.id for job in jobs]
   session.close()
-  print "Running jobs..."
+  print "Running jobs {}...".format(job_ids)
   p = mp.Pool()
   for job_id in job_ids:
     p.apply_async(run_job, args = (job_id, url))

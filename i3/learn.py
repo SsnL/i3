@@ -7,6 +7,7 @@ from i3 import dist
 from i3 import gibbs
 from i3 import utils
 
+import numpy as np
 from scipy import stats
 from sklearn import linear_model
 from sklearn import neighbors
@@ -153,7 +154,7 @@ square_transformer = lambda xs: [xi * xj for xi in xs for xj in xs]
 
 class LogisticRegressionLearner(dist.DiscreteDistribution):
   # Only binary values supported for now.
-  
+
   def __init__(self, support, rng, transform_inputs=None):
     super(LogisticRegressionLearner, self).__init__(rng)
     assert support == [0, 1]
@@ -166,34 +167,28 @@ class LogisticRegressionLearner(dist.DiscreteDistribution):
       self.transformer = transform_inputs
 
   def params_to_inputs(self, params):
-    return tuple(self.transformer(params)) + (1,)
+    return np.hstack([self.transformer(np.array(params)), 1])
 
   def probability(self, inputs, value):
-    logit = sum(theta_i * x_i for (theta_i, x_i) in zip(self.weights, inputs))
-    p_on = 1.0 / (1.0 + math.exp(-logit))
+    p_on = 1.0 / (1.0 + np.exp(-self.weights.dot(inputs)))
     return value * p_on + (1 - value) * (1 - p_on)
 
   def log_probability(self, params, value):
     assert value in (0, 1)
     inputs = self.params_to_inputs(params)
-    assert len(inputs) == len(self.weights)
     return utils.safe_log(self.probability(inputs, value))
 
   def observe(self, params, value):
     assert value in (0, 1)
-    inputs = self.params_to_inputs(params)    
+    inputs = self.params_to_inputs(params)
     if self.weights is None:
-      self.weights = [0.0] * len(inputs)
-    else:
-      assert len(self.weights) == len(inputs)
+      self.weights = np.zeros(len(inputs))
     p_on = self.probability(inputs, 1)
-    for i, weight in enumerate(self.weights):
-      self.weights[i] += (self.rate / math.sqrt(self.n)) * (value - p_on) * inputs[i]
+    self.weights += (self.rate / np.sqrt(self.n)) * (value - p_on) * inpits
     self.n += 1
-  
+
   def sample(self, params):
     inputs = self.params_to_inputs(params)
-    assert len(inputs) == len(self.weights)    
     p_on = self.probability(inputs, 1)
     return 1 if self.rng.flip(p_on) else 0
 

@@ -13,11 +13,22 @@ create table experiment1 (name varchar, net_name varchar, status varchar, determ
 
 ALTER TABLE experiment1 ADD COLUMN id BIGSERIAL PRIMARY KEY;
 
+ALTER table experiment1 owner to inverse;
+
+
 create table experiment1_gibbs_runs (net_name varchar, start_time time, seed integer, num_states integer, evidence_indices integer array, evidence_values integer array);
 alter table experiment1_gibbs_runs ADD COLUMN id BIGSERIAL PRIMARY KEY;
+
+ALTER table experiment1_gibbs_runs owner to inverse;
+
 
 create table experiment1_gibbs_data (gibbs_id integer references experiment1_gibbs_runs(id), state_id integer not null, time time, world_indices integer array, world_values integer array);
 alter table experiment1_gibbs_data add primary key (gibbs_id, state_id);
 
+ALTER table experiment1_gibbs_data owner to inverse;
+
 
 grant all privileges on database invert to inverse;
+
+ALTER DATABASE invert owner to inverse;
+
