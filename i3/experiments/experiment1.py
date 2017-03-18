@@ -65,7 +65,7 @@ class DiscreteData(SQLBase):
     self.world_indices = world_indices
     self.world_values = world_values
 
-def gen_data_run(net_name, num_states url, seed):
+def gen_data_run(net_name, num_states, url, seed):
   session = sql.get_session(url)
   # random evidence
   evidence = triangle_net.evidence(net_name, 0, 99)
@@ -181,7 +181,7 @@ def create_jobs(num_jobs):
 def create_reference_jobs(num_jobs_per_case):
   jobs = []
   seed = 1000
-  net_names = ["75-25-{}".format(i) for i in xrange(1, 11)]
+  net_names = ["75-25-{}".format(i) for i in xrange(1, 2)]
   determinisms = [99]
   prior_ratios = [1.]
   max_inverse_sizes = [20]
