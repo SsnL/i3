@@ -66,11 +66,11 @@ def run_experiment(experiment, reset_database=False):
     sql.reset_database(experiment.Job, url)
   print "Creating jobs..."
   # jobs = experiment.create_jobs(num_jobs=2)
-  # jobs = experiment.create_reference_jobs(10)
+  jobs = experiment.create_reference_jobs(10)
   session = sql.get_session(url)
-  jobs = session.query(experiment.Job).filter(experiment.Job.status != 'done')
-  # session.add_all(jobs)
-  # session.commit()
+  # jobs = session.query(experiment.Job).filter(experiment.Job.status != 'done')
+  session.add_all(jobs)
+  session.commit()
   job_ids = [job.id for job in jobs]
   session.close()
   print "Running jobs {}...".format(job_ids)
