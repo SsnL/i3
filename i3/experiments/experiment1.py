@@ -256,6 +256,7 @@ def run(job, session, log):
       world = net.sample()
       trainer.observe(world)
       counter.observe(world)
+      del world
   trainer.finalize()
   job.training_error = (marginals - counter.marginals()).mean()
   t2 = datetime.datetime.now()

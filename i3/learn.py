@@ -46,7 +46,6 @@ class CountLearner(dist.DiscreteDistribution):
     """No compilation step necessary."""
     pass
 
-
 class LinRegLearner(dist.ContinuousDistribution):
 
   def __init__(self, rng):
@@ -147,9 +146,9 @@ class GibbsLearner(dist.DiscreteDistribution):
     pass
 
 
-identity_transformer = lambda xs: xs
+identity_transformer = lambda xs: np.array(xs)
 
-square_transformer = lambda xs: [xi * xj for xi in xs for xj in xs]
+square_transformer = lambda xs: np.array([xi * xj for xi in xs for xj in xs])
 
 
 class LogisticRegressionLearner(dist.DiscreteDistribution):
@@ -167,7 +166,7 @@ class LogisticRegressionLearner(dist.DiscreteDistribution):
       self.transformer = transform_inputs
 
   def params_to_inputs(self, params):
-    return np.hstack([self.transformer(np.array(params)), 1])
+    return np.hstack([self.transformer(params), 1])
 
   def probability(self, inputs, value):
     p_on = 1.0 / (1.0 + np.exp(-self.weights.dot(inputs)))
@@ -184,7 +183,7 @@ class LogisticRegressionLearner(dist.DiscreteDistribution):
     if self.weights is None:
       self.weights = np.zeros(len(inputs))
     p_on = self.probability(inputs, 1)
-    self.weights += (self.rate / np.sqrt(self.n)) * (value - p_on) * inpits
+    self.weights += (self.rate / np.sqrt(self.n)) * (value - p_on) * inputs
     self.n += 1
 
   def sample(self, params):
