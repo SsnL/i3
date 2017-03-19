@@ -181,7 +181,7 @@ def create_jobs(num_jobs):
 def create_reference_jobs(num_jobs_per_case):
   jobs = []
   seed = 1000
-  net_names = ["75-25-{}".format(i) for i in xrange(2, 3)]
+  net_names = ["bn2o-30-20-200-1b"] # 75-25-{}".format(i) for i in xrange(2, 3)]
   determinisms = [99]
   prior_ratios = [1.]
   max_inverse_sizes = [20]
