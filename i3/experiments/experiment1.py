@@ -206,7 +206,7 @@ def create_reference_jobs(num_jobs_per_case):
       job.precompute_gibbs = precompute_gibbs
       job.learner = learner
       job.min_test_iterations = min_test_iterations
-      jobs.min_test_time = min_test_time
+      job.min_test_time = min_test_time
       jobs.append(job)
   return jobs
 
