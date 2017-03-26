@@ -225,10 +225,10 @@ def run(job, session, log):
   session.commit()
 
   log("Computing inverse map...")
-  t0 = time.process_time()
+  t0 = time.time()
   inverse_map = invert.compute_inverse_map(
     net, evidence_nodes, rng, job.max_inverse_size)
-  t1 = time.process_time()
+  t1 = time.time()
   job.inversion_seconds = (t1 - t0).total_seconds()
   job.status = "inverted"
   session.commit()
@@ -263,7 +263,7 @@ def run(job, session, log):
       del world
   trainer.finalize()
   job.training_error = (marginals - counter.marginals()).mean()
-  t2 = time.process_time()
+  t2 = time.time()
   job.training_seconds = (t2 - t1).total_seconds()
   job.status = "trained"
   session.commit()
@@ -274,7 +274,7 @@ def run(job, session, log):
   test_sampler.initialize_state()
   counter = marg.MarginalCounter(net)
   num_proposals_accepted = 0
-  test_start_time = time.process_time()
+  test_start_time = time.time()
   i = 0
   test_time = 0
   test_errors = []
@@ -287,7 +287,7 @@ def run(job, session, log):
     num_proposals_accepted += accept
     i += 1
     test_errors.append((marginals - counter.marginals()).mean())
-    test_time = time.process_time() - test_start_time
+    test_time = time.time() - test_start_time
     # if i % 100 == 0:
     #   error = (marginals - counter.marginals()).mean()
     #   error_integrator.observe(error)
