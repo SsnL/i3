@@ -278,6 +278,7 @@ def run(job, session, log):
   i = 0
   test_time = 0
   test_errors = []
+  test_times = []
   # error_integrator = utils.TemporalIntegrator()
   # while ((datetime.datetime.now() - test_start_time).total_seconds()
   #        < job.test_seconds):
@@ -288,12 +289,14 @@ def run(job, session, log):
     i += 1
     test_errors.append((marginals - counter.marginals()).mean())
     test_time = time.time() - test_start_time
+    test_times.append(test_time)
     # if i % 100 == 0:
     #   error = (marginals - counter.marginals()).mean()
     #   error_integrator.observe(error)
   # final_error = (marginals - counter.marginals()).mean()
   # error_integrator.observe(final_error)
   job.test_errors = test_errors
+  job.test_times = test_times
   # job.test_error = final_error
   # job.integrated_error = error_integrator.integral / empirical_test_seconds
   job.test_proposals = i * num_latent_nodes
