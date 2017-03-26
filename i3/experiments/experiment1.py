@@ -229,7 +229,7 @@ def run(job, session, log):
   inverse_map = invert.compute_inverse_map(
     net, evidence_nodes, rng, job.max_inverse_size)
   t1 = time.time()
-  job.inversion_seconds = (t1 - t0).total_seconds()
+  job.inversion_seconds = t1 - t0
   job.status = "inverted"
   session.commit()
 
@@ -264,7 +264,7 @@ def run(job, session, log):
   trainer.finalize()
   job.training_error = (marginals - counter.marginals()).mean()
   t2 = time.time()
-  job.training_seconds = (t2 - t1).total_seconds()
+  job.training_seconds = t2 - t1
   job.status = "trained"
   session.commit()
 
