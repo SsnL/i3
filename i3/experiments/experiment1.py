@@ -10,6 +10,7 @@ from  sqlalchemy.sql.expression import func
 from itertools import product
 import sys
 import multiprocessing as mp
+import time
 
 if sys.version_info < (3, 0):
   from itertools import izip as zip
@@ -115,13 +116,14 @@ class Job(SQLBase):
   precompute_gibbs = sa.Column(sa.Boolean)
   seed = sa.Column(sa.Integer)
   start_time = sa.Column(sa.DateTime)
-  num_test_iterations = sa.Column(sa.Integer)
+  min_test_iterations = sa.Column(sa.Integer)
+  min_test_time = sa.Column(sa.Float)
   # test_error = sa.Column(sa.Float)
+  test_times = sa.Column(sa_postgresql.ARRAY(sa.Float))
   test_errors = sa.Column(sa_postgresql.ARRAY(sa.Float))
   test_proposals = sa.Column(sa.Integer)
   test_proposals_accepted = sa.Column(sa.Integer)
   # test_seconds = sa.Column(sa.Float)
-  empirical_test_seconds = sa.Column(sa.Float)
   training_error = sa.Column(sa.Float)
   training_seconds = sa.Column(sa.Float)
   # training_source = sa.Column(sa.String)
@@ -141,13 +143,13 @@ class Job(SQLBase):
     self.seed = 0
     # self.training_source = "gibbs"
     self.start_time = None
-    self.num_test_iterations = 100
+    self.min_test_iterations = 100
+    self.min_test_time = 1200
     # self.test_error = None
     self.test_errors = None
     self.test_proposals = None
     self.test_proposals_accepted = None
     # self.test_seconds = 10
-    self.empirical_test_seconds = None
     self.training_error = None
     self.training_seconds = None
     # self.integrated_error = None
@@ -181,14 +183,15 @@ def create_jobs(num_jobs):
 def create_reference_jobs(num_jobs_per_case):
   jobs = []
   seed = 1000
-  net_names = ["bn2o-30-20-200-1b"] # 75-25-{}".format(i) for i in xrange(2, 3)]
+  net_names = ["triangle-n120"] #["75-25-{}".format(i) for i in xrange(2, 3)]
   determinisms = [99]
   prior_ratios = [1.]
   max_inverse_sizes = [20]
   num_training_sampless = [10000, 100000]
-  precompute_gibbss = [True]
-  learners = ["counts", "lr"]
-  num_test_iterations = 1000
+  precompute_gibbss = [False, True]
+  learners = ["counts"]#, "lr"]
+  min_test_iterations = 1000
+  min_test_time = 1200
   params = [net_names, determinisms, prior_ratios, max_inverse_sizes, num_training_sampless, precompute_gibbss, learners]
   for net_name, determinism, prior_ratio, max_inverse_size, num_training_samples, precompute_gibbs, learner in product(*params):
     for _ in xrange(num_jobs_per_case):
@@ -202,7 +205,8 @@ def create_reference_jobs(num_jobs_per_case):
       job.max_inverse_size = max_inverse_size
       job.precompute_gibbs = precompute_gibbs
       job.learner = learner
-      job.num_test_iterations = num_test_iterations
+      job.min_test_iterations = min_test_iterations
+      job.min_test_time = min_test_time
       jobs.append(job)
   return jobs
 
@@ -221,11 +225,11 @@ def run(job, session, log):
   session.commit()
 
   log("Computing inverse map...")
-  t0 = datetime.datetime.now()
+  t0 = time.time()
   inverse_map = invert.compute_inverse_map(
     net, evidence_nodes, rng, job.max_inverse_size)
-  t1 = datetime.datetime.now()
-  job.inversion_seconds = (t1 - t0).total_seconds()
+  t1 = time.time()
+  job.inversion_seconds = t1 - t0
   job.status = "inverted"
   session.commit()
 
@@ -259,8 +263,8 @@ def run(job, session, log):
       del world
   trainer.finalize()
   job.training_error = (marginals - counter.marginals()).mean()
-  t2 = datetime.datetime.now()
-  job.training_seconds = (t2 - t1).total_seconds()
+  t2 = time.time()
+  job.training_seconds = t2 - t1
   job.status = "trained"
   session.commit()
 
@@ -270,28 +274,30 @@ def run(job, session, log):
   test_sampler.initialize_state()
   counter = marg.MarginalCounter(net)
   num_proposals_accepted = 0
-  test_start_time = datetime.datetime.now()
+  test_start_time = time.time()
   i = 0
+  test_time = 0
   test_errors = []
+  test_times = []
   # error_integrator = utils.TemporalIntegrator()
   # while ((datetime.datetime.now() - test_start_time).total_seconds()
   #        < job.test_seconds):
-  while i < job.num_test_iterations:
+  while i < job.min_test_iterations or test_time < job.min_test_time:
     accept = test_sampler.transition()
     counter.observe(test_sampler.state)
     num_proposals_accepted += accept
     i += 1
     test_errors.append((marginals - counter.marginals()).mean())
+    test_time = time.time() - test_start_time
+    test_times.append(test_time)
     # if i % 100 == 0:
     #   error = (marginals - counter.marginals()).mean()
     #   error_integrator.observe(error)
   # final_error = (marginals - counter.marginals()).mean()
-  final_time = datetime.datetime.now()
-  empirical_test_seconds = (final_time - test_start_time).total_seconds()
   # error_integrator.observe(final_error)
   job.test_errors = test_errors
+  job.test_times = test_times
   # job.test_error = final_error
   # job.integrated_error = error_integrator.integral / empirical_test_seconds
   job.test_proposals = i * num_latent_nodes
   job.test_proposals_accepted = num_proposals_accepted
-  job.empirical_test_seconds = empirical_test_seconds
