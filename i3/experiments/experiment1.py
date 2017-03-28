@@ -90,7 +90,7 @@ def gen_data_run(net_name, num_states, url, seed):
   session.close()
 
 def gen_data(net_name, num_gibbs_runs, num_states_per_run, seed = 1000):
-  print "Gen data..."
+  # print "Gen data..."
   url = sql.get_database_url()
   p = mp.Pool()
   for _ in xrange(num_gibbs_runs):
