@@ -185,7 +185,7 @@ def create_reference_jobs(num_jobs_per_case):
   seed = 1000
   net_names = ["triangle-n120"] #["75-25-{}".format(i) for i in xrange(2, 3)]
   determinisms = [99]
-  prior_ratios = [1.]
+  prior_ratios = [0.]
   max_inverse_sizes = [20]
   num_training_sampless = [10000, 100000]
   precompute_gibbss = [False, True]
